@@ -23,23 +23,16 @@ body { background-color: #e2e8f0; color: var(--text-main); display: flex; justif
 .section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .section-title h3 { font-size: 1rem; font-weight: 800; color: var(--text-main); text-transform: uppercase;}
 .mt-10{margin-top:10px;} .mt-15{margin-top:15px;} .mt-20{margin-top:20px;} .mb-15{margin-bottom:15px;} .mb-20{margin-bottom:20px;}
-.w-full { width: 100%; } .text-sm { font-size: 0.85rem; } .text-center { text-align: center; }
+.w-full { width: 100%; } .text-sm { font-size: 0.85rem; } .text-center { text-align: center; } .flex-1 { flex: 1; }
 .text-blue{color:var(--primary);} .text-green{color:var(--success);} .text-orange{color:var(--warning);} .text-red{color:var(--danger);} .text-muted{color:var(--text-muted);}
-.bg-blue{background:#eff6ff; color:var(--primary);} .bg-green{background:#ecfdf5; color:var(--success);} .bg-orange{background:#fff7ed; color:var(--warning);} .bg-red{background:#fef2f2; color:var(--danger);}
+.bg-blue{background:#eff6ff; color:var(--primary);} .bg-green{background:#ecfdf5; color:var(--success);} .bg-orange{background:#fff7ed; color:var(--warning);} .bg-red{background:#fef2f2; color:var(--danger);} .bg-slate{background:#f1f5f9;}
 
 /* Headers */
 .app-header { margin-bottom: 20px; }
 .greeting h2 { font-size: 1.4rem; font-weight: 800; color: var(--primary-dark);}
 .greeting p { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
 
-/* Summaries */
-.summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;}
-.summary-card { padding: 15px; border-radius: 16px; display: flex; align-items: center; gap: 15px; box-shadow: var(--shadow-sm);}
-.summary-card i { font-size: 1.6rem; }
-.summary-card h4 { font-size: 1.4rem; font-weight: 800; line-height: 1.2;}
-.summary-card p { font-size: 0.8rem; font-weight: 600; opacity: 0.8;}
-
-/* Schedule List - Đã tối ưu dễ chạm */
+/* Schedule List */
 .schedule-list { display: flex; flex-direction: column; gap: 15px; }
 .dash-sched-card { background: white; border-radius: 20px; padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 6px; transition: 0.2s;}
 .dash-sched-card.highlight { border: 2px solid var(--primary); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15); background: #f8fafc;}
@@ -66,7 +59,7 @@ body { background-color: #e2e8f0; color: var(--text-main); display: flex; justif
 .tab-btn { flex: 1; text-align: center; padding: 10px 4px; border-radius: 10px; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); cursor: pointer; transition: 0.3s; white-space: nowrap;}
 .tab-btn.active { background: white; color: var(--primary); box-shadow: var(--shadow-sm);}
 
-/* Menu phụ (Thêm) */
+/* Menu phụ */
 .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;}
 .menu-card { background: var(--bg-surface); padding: 16px; border-radius: 16px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid #f1f5f9;}
 .menu-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;}
@@ -77,6 +70,7 @@ body { background-color: #e2e8f0; color: var(--text-main); display: flex; justif
 button { font-family: inherit; cursor: pointer; transition: 0.2s; outline: none; border: none; display: inline-flex; justify-content: center; align-items: center; gap: 8px;}
 .btn-primary { background: var(--primary); color: white; padding: 12px 20px; font-size: 0.95rem; border-radius: 12px; font-weight: 700;}
 .btn-outline { background: white; border: 1px solid #cbd5e1; color: var(--text-main); padding: 10px 18px; border-radius: 12px; font-weight: 600;}
+.btn-outline.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
 .btn-outline-action { background: transparent; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-weight: 700; display:flex; gap:8px;}
 .btn-large { padding: 16px; font-size: 1rem; border-radius: 16px;}
 .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; font-weight:600;}
@@ -84,7 +78,7 @@ button { font-family: inherit; cursor: pointer; transition: 0.2s; outline: none;
 .input-group { margin-bottom: 15px; } .form-row { display: flex; gap: 10px; } .form-row .input-group { flex: 1; }
 label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
 input, select, textarea { width: 100%; padding: 12px 15px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 0.95rem; background: #f8fafc; font-weight: 600; outline: none; transition: 0.2s;}
-input:focus, select:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-light); outline: none;}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px var(--primary-light); outline: none;}
 
 .tkb-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 .tkb-row select, .tkb-row input { flex: 1; padding: 10px 5px; text-align: center; min-width: 0; }
@@ -143,7 +137,7 @@ input:focus, select:focus { border-color: var(--primary); background: white; box
 .search-bar i { color: var(--text-muted); }
 .search-bar input::placeholder { color: #94a3b8; font-weight: 500; }
 
-/* Bottom Nav - Đã tối giản */
+/* Bottom Nav */
 #bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; height: var(--nav-height); background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); z-index: 100; border-top: 1px solid #f1f5f9; padding: 0 15px;}
 .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; height: 100%; gap:4px; transition: 0.2s; padding: 10px; min-width: 70px;}
 .nav-icon { font-size: 1.25rem; transition: 0.2s;}

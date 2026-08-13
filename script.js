@@ -1,6 +1,6 @@
 // --- HỆ THỐNG FIREBASE ĐĂNG NHẬP ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -78,10 +78,23 @@ onAuthStateChanged(auth, async (user) => {
             if (typeof generateSchedules === 'function') generateSchedules();
         }
     } else {
+        // ĐÃ ĐĂNG XUẤT THÌ ẨN APP VÀ HIỆN MÀN HÌNH ĐĂNG NHẬP
         currentUser = null;
         loginScreen.style.display = 'flex';
     }
 });
+
+// THÊM: HÀM ĐĂNG XUẤT TÀI KHOẢN
+function logoutUser() {
+    if(confirm("Bạn có chắc chắn muốn đăng xuất tài khoản này?")) {
+        signOut(auth).then(() => {
+            // Đăng xuất thành công, onAuthStateChanged ở trên sẽ tự kích hoạt và đẩy ra login
+            showToast("Đã đăng xuất thành công!");
+        }).catch((error) => {
+            showToast("Lỗi đăng xuất: " + error.message, "error");
+        });
+    }
+}
 
 // ================= DATA STRUCTURE =================
 const defaultData = { classes: [], students: [], holidays: [], sessions: [], attendance: [], tuitions: [] };
@@ -117,6 +130,10 @@ window.onload = () => {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
     }
+    
+    // Tự động nạp API Key nếu đã lưu trước đó
+    const savedApiKey = localStorage.getItem('geminiApiKey');
+    if (savedApiKey) document.getElementById('ai-api-key').value = savedApiKey;
 };
 
 function showToast(msg, type='success') {
@@ -284,7 +301,6 @@ function updateDashboard() {
     });
 }
 
-// ĐÃ THÊM: Tính năng tìm kiếm siêu tốc trên màn hình chính
 window.quickSearchHome = function() {
     let input = document.getElementById('quick-search-class').value.toLowerCase();
     let defaultContent = document.getElementById('home-default-content');
@@ -404,6 +420,7 @@ function renderTuition() {
     
     if(dues.length === 0) { list.innerHTML = '<div class="text-center text-muted" style="padding:40px 20px;">Tất cả học sinh đã đóng đủ học phí!</div>'; }
     dues.forEach(d => {
+        // ĐÃ THÊM NÚT BẤM "✨ AI"
         list.innerHTML += `
             <div class="tuition-card">
                 <div>
@@ -413,7 +430,8 @@ function renderTuition() {
                 <div style="text-align:right;">
                     <h3 class="text-orange" style="margin-bottom:8px;">${d.amount.toLocaleString()}đ</h3>
                     <div style="display:flex; justify-content:flex-end; gap:8px;">
-                        <button class="btn-sm" style="background:#0068ff; color:white; border:none;" onclick="sendZaloBill('${d.student.name}', '${d.cls.name}', ${d.cycle}, ${d.amount}, '${d.student.phone || ''}')" title="Copy tin nhắn & Mở Zalo"><i class="fas fa-comment-dots"></i> Zalo</button>
+                        <button class="btn-sm" style="background:#8b5cf6; color:white; border:none;" onclick="openAiModal('${d.student.name}', '${d.cls.name}', ${d.cycle}, ${d.amount}, '${d.student.phone || ''}')" title="Nhờ AI soạn tin"><i class="fas fa-magic"></i> AI</button>
+                        <button class="btn-sm" style="background:#0068ff; color:white; border:none;" onclick="sendZaloBill('${d.student.name}', '${d.cls.name}', ${d.cycle}, ${d.amount}, '${d.student.phone || ''}')" title="Copy tin nhắn mẫu"><i class="fas fa-comment-dots"></i> Zalo</button>
                         <button class="btn-sm" style="background:var(--primary); color:white; border:none;" onclick="openPayModal(${d.student.id}, ${d.amount}, ${d.from}, ${d.to})">Thu tiền</button>
                     </div>
                 </div>
@@ -445,6 +463,83 @@ function renderTuition() {
     }
 }
 
+// ================= PHẦN TÍCH HỢP TRỢ LÝ AI =================
+let currentAiData = null;
+
+function saveApiKey() {
+    const key = document.getElementById('ai-api-key').value;
+    localStorage.setItem('geminiApiKey', key);
+    showToast("✅ Đã lưu API Key thành công!");
+}
+
+function openAiModal(stuName, className, sessions, amount, phone) {
+    const apiKey = localStorage.getItem('geminiApiKey');
+    if(!apiKey || apiKey.trim() === '') {
+        showToast("Bạn chưa cài đặt API Key! Đang chuyển đến phần Cài đặt...", "error");
+        switchView('view-more', document.querySelectorAll('.nav-item')[4]);
+        openModal('modal-settings');
+        return;
+    }
+    
+    currentAiData = { stuName, className, sessions, amount, phone };
+    openModal('modal-ai-message');
+    generateAiMessage('nhẹ nhàng, thân thiện, tình cảm'); // Giọng văn mặc định
+}
+
+async function generateAiMessage(tone) {
+    document.getElementById('ai-message-result').value = "AI đang suy nghĩ và soạn tin... Vui lòng đợi 3-5 giây nhé ✨";
+    const apiKey = localStorage.getItem('geminiApiKey');
+    
+    // Đổi màu nút bấm để biết đang chọn giọng văn nào
+    document.getElementById('btn-tone-friendly').classList.toggle('active', tone.includes('thân thiện'));
+    document.getElementById('btn-tone-formal').classList.toggle('active', tone.includes('trang trọng'));
+
+    const prompt = `Bạn là một giáo viên dạy thêm tận tâm. Hãy soạn một tin nhắn Zalo ngắn gọn gửi phụ huynh để nhắc việc đóng học phí.
+    Thông tin:
+    - Tên học sinh: ${currentAiData.stuName}
+    - Thuộc lớp: ${currentAiData.className}
+    - Đã hoàn thành đợt học gồm: ${currentAiData.sessions} buổi
+    - Tổng tiền học phí cần đóng: ${currentAiData.amount.toLocaleString()} VNĐ
+    
+    Yêu cầu:
+    - Giọng văn: ${tone}.
+    - Không viết tiêu đề, chỉ viết nội dung tin nhắn. Không bọc trong dấu ngoặc kép. Đừng viết quá dài dòng.`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await response.json();
+        
+        if(data.error) throw new Error(data.error.message);
+        
+        let text = data.candidates[0].content.parts[0].text;
+        document.getElementById('ai-message-result').value = text.trim();
+    } catch (err) {
+        document.getElementById('ai-message-result').value = "Lỗi khi gọi AI: " + err.message + "\n\nXin hãy chắc chắn rằng bạn đã copy đúng API Key của Google Gemini vào mục Cài đặt.";
+    }
+}
+
+function sendAiMessageZalo() {
+    const msg = document.getElementById('ai-message-result').value;
+    if(!msg || msg.includes("Lỗi khi gọi AI") || msg.includes("AI đang suy nghĩ")) return;
+    
+    navigator.clipboard.writeText(msg).then(() => {
+        if (currentAiData.phone && currentAiData.phone.trim() !== '') {
+            window.open(`https://zalo.me/${currentAiData.phone}`, '_blank');
+            showToast("✅ Đã copy bản AI soạn và mở Zalo! Bạn chỉ cần Dán (Paste) để gửi.");
+        } else {
+            showToast("✅ Đã copy bản AI soạn! (Học sinh này chưa có SĐT nên không thể tự mở Zalo)");
+        }
+        closeModal('modal-ai-message');
+    }).catch(err => {
+        showToast("Lỗi copy. Vui lòng copy thủ công trong ô chữ nhé!", "error");
+    });
+}
+// =========================================================
+
 function deleteTuition(id) {
     if(confirm("Hủy bỏ giao dịch thu tiền này? (Tiền sẽ bị trừ khỏi tổng Đã thu)")) {
         db.tuitions = db.tuitions.filter(t => t.id != id); saveData(); renderTuition(); showToast("Đã hủy giao dịch!");
@@ -465,7 +560,6 @@ function confirmPayment() {
 
 function openAddStudentForClass(cid) { document.getElementById('stu-id').value = ''; document.getElementById('stu-name').value = ''; document.getElementById('stu-phone').value = ''; document.getElementById('stu-custom-fee').value = ''; document.getElementById('stu-start').value = getTodayStr(); document.getElementById('stu-class').value = cid; openModal('modal-add-student'); }
 
-// ĐÃ THÊM LỌC NHÓM LỚP
 function renderClasses() {
     const list = document.getElementById('class-list'); 
     list.innerHTML = '';
@@ -726,4 +820,9 @@ window.sendZaloBill = sendZaloBill;
 window.openPayModal = openPayModal;
 window.openAddStudentForClass = openAddStudentForClass;
 window.renderStatistics = renderStatistics;
-window.quickSearchHome = quickSearchHome; // Đã thêm
+window.quickSearchHome = quickSearchHome;
+window.saveApiKey = saveApiKey;
+window.openAiModal = openAiModal;
+window.generateAiMessage = generateAiMessage;
+window.sendAiMessageZalo = sendAiMessageZalo;
+window.logoutUser = logoutUser; // THÊM HÀM ĐĂNG XUẤT VÀO ĐÂY
