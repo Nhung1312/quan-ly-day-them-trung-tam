@@ -506,7 +506,8 @@ async function generateAiMessage(tone) {
     - Không viết tiêu đề, chỉ viết nội dung tin nhắn. Không bọc trong dấu ngoặc kép. Đừng viết quá dài dòng.`;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // ĐÃ SỬA THÀNH GEMINI-PRO
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
