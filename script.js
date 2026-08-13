@@ -78,17 +78,14 @@ onAuthStateChanged(auth, async (user) => {
             if (typeof generateSchedules === 'function') generateSchedules();
         }
     } else {
-        // ĐÃ ĐĂNG XUẤT THÌ ẨN APP VÀ HIỆN MÀN HÌNH ĐĂNG NHẬP
         currentUser = null;
         loginScreen.style.display = 'flex';
     }
 });
 
-// THÊM: HÀM ĐĂNG XUẤT TÀI KHOẢN
 function logoutUser() {
     if(confirm("Bạn có chắc chắn muốn đăng xuất tài khoản này?")) {
         signOut(auth).then(() => {
-            // Đăng xuất thành công, onAuthStateChanged ở trên sẽ tự kích hoạt và đẩy ra login
             showToast("Đã đăng xuất thành công!");
         }).catch((error) => {
             showToast("Lỗi đăng xuất: " + error.message, "error");
@@ -131,7 +128,6 @@ window.onload = () => {
         navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
     }
     
-    // Tự động nạp API Key nếu đã lưu trước đó
     const savedApiKey = localStorage.getItem('geminiApiKey');
     if (savedApiKey) document.getElementById('ai-api-key').value = savedApiKey;
 };
@@ -462,7 +458,7 @@ function renderTuition() {
     }
 }
 
-// ================= PHẦN TÍCH HỢP TRỢ LÝ AI (PHIÊN BẢN QUÉT TỰ ĐỘNG) =================
+// ================= PHẦN TÍCH HỢP TRỢ LÝ AI (BÁC SĨ KHÁM BỆNH) =================
 let currentAiData = null;
 
 function saveApiKey() {
@@ -486,69 +482,79 @@ function openAiModal(stuName, className, sessions, amount, phone) {
 }
 
 async function generateAiMessage(tone) {
-    document.getElementById('ai-message-result').value = "AI đang suy nghĩ và soạn tin... Vui lòng đợi 3-5 giây nhé ✨";
+    document.getElementById('ai-message-result').value = "Đang kết nối để khám bệnh AI... Vui lòng đợi...";
     const apiKey = localStorage.getItem('geminiApiKey');
     
-    // Đổi màu nút bấm để biết đang chọn giọng văn nào
+    if(!apiKey) {
+        document.getElementById('ai-message-result').value = "Chưa có API Key. Hãy vào Cài đặt để dán API Key.";
+        return;
+    }
+
     document.getElementById('btn-tone-friendly').classList.toggle('active', tone.includes('thân thiện'));
     document.getElementById('btn-tone-formal').classList.toggle('active', tone.includes('trang trọng'));
 
     const prompt = `Bạn là một giáo viên dạy thêm tận tâm. Hãy soạn một tin nhắn Zalo ngắn gọn gửi phụ huynh để nhắc việc đóng học phí.
-    Thôngত্তি:
+    Thông tin:
     - Tên học sinh: ${currentAiData.stuName}
     - Thuộc lớp: ${currentAiData.className}
     - Đã hoàn thành đợt học gồm: ${currentAiData.sessions} buổi
     - Tổng tiền học phí cần đóng: ${currentAiData.amount.toLocaleString()} VNĐ
     
-    Yêu cầu:
-    - Giọng văn: ${tone}.
-    - Không viết tiêu đề, chỉ viết nội dung tin nhắn. Không bọc trong dấu ngoặc kép. Đừng viết quá dài dòng.`;
+    Yêu cầu: Giọng văn ${tone}.`;
 
     try {
-        // BƯỚC 1: Tự động quét và tìm phiên bản AI khả dụng cho API Key này
-        let targetModel = "gemini-1.5-flash"; // Fallback mặc định
-        const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        // Bước 1: Kiểm tra API Key và quét xem tài khoản này được phép dùng bản AI nào
+        const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`);
+        const listData = await listResp.json();
         
-        if (listResp.ok) {
-            const listData = await listResp.json();
-            if (listData.models) {
-                // Lọc ra các model có hỗ trợ chức năng tạo văn bản (generateContent)
-                const validModels = listData.models.filter(m =>
-                    m.supportedGenerationMethods &&
-                    m.supportedGenerationMethods.includes("generateContent") &&
-                    m.name.includes("gemini")
-                );
-                
-                if (validModels.length > 0) {
-                    // Ưu tiên lấy bản flash hoặc pro mới nhất, nếu không thì lấy bản khả dụng đầu tiên
-                    const preferred = validModels.find(m => m.name.includes("1.5-flash")) 
-                                   || validModels.find(m => m.name.includes("1.5-pro")) 
-                                   || validModels[0];
-                    targetModel = preferred.name.replace('models/', '');
-                }
-            }
+        if (!listResp.ok) {
+            document.getElementById('ai-message-result').value = "❌ LỖI API KEY CỦA BẠN:\n" + (listData.error ? listData.error.message : JSON.stringify(listData));
+            return;
         }
 
-        // BƯỚC 2: Gọi chính xác phiên bản AI đã quét được
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`, {
+        if (!listData.models || listData.models.length === 0) {
+            document.getElementById('ai-message-result').value = "❌ LỖI TÀI KHOẢN GOOGLE:\nTài khoản này không được cấp quyền dùng AI. Hãy thử tạo API Key bằng 1 Gmail khác hoàn toàn mới.";
+            return;
+        }
+
+        const validModels = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini"));
+        
+        if (validModels.length === 0) {
+             document.getElementById('ai-message-result').value = "❌ LỖI PHIÊN BẢN:\nAPI Key hợp lệ nhưng khu vực/tài khoản này không hỗ trợ mô hình Gemini sinh văn bản.";
+             return;
+        }
+
+        // Ưu tiên bản mới nhất hoặc bản mạnh nhất hiện có của tài khoản đó
+        const preferred = validModels.find(m => m.name.includes("gemini-1.5-flash")) 
+                       || validModels.find(m => m.name.includes("gemini-pro")) 
+                       || validModels[0];
+                       
+        const targetModel = preferred.name.replace('models/', '');
+        document.getElementById('ai-message-result').value = `✅ Đã kết nối thành công với ${targetModel}. Đang soạn tin...`;
+
+        // Bước 2: Gọi AI viết tin nhắn
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey.trim()}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
         const data = await response.json();
         
-        if(data.error) throw new Error(data.error.message);
+        if(data.error) {
+            document.getElementById('ai-message-result').value = `❌ LỖI SOẠN TIN TỪ ${targetModel}:\n` + data.error.message;
+            return;
+        }
         
         let text = data.candidates[0].content.parts[0].text;
         document.getElementById('ai-message-result').value = text.trim();
     } catch (err) {
-        document.getElementById('ai-message-result').value = "Lỗi khi gọi AI: " + err.message + "\n\nXin hãy chắc chắn rằng bạn đã copy đúng API Key của Google Gemini vào mục Cài đặt.";
+        document.getElementById('ai-message-result').value = "❌ LỖI MẠNG HOẶC TRÌNH DUYỆT:\n" + err.message;
     }
 }
 
 function sendAiMessageZalo() {
     const msg = document.getElementById('ai-message-result').value;
-    if(!msg || msg.includes("Lỗi khi gọi AI") || msg.includes("AI đang suy nghĩ")) return;
+    if(!msg || msg.includes("❌") || msg.includes("Đang kết nối") || msg.includes("Đã kết nối thành công")) return;
     
     navigator.clipboard.writeText(msg).then(() => {
         if (currentAiData.phone && currentAiData.phone.trim() !== '') {
