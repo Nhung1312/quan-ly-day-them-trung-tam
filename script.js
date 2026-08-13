@@ -420,7 +420,6 @@ function renderTuition() {
     
     if(dues.length === 0) { list.innerHTML = '<div class="text-center text-muted" style="padding:40px 20px;">Tất cả học sinh đã đóng đủ học phí!</div>'; }
     dues.forEach(d => {
-        // ĐÃ THÊM NÚT BẤM "✨ AI"
         list.innerHTML += `
             <div class="tuition-card">
                 <div>
@@ -463,7 +462,7 @@ function renderTuition() {
     }
 }
 
-// ================= PHẦN TÍCH HỢP TRỢ LÝ AI =================
+// ================= PHẦN TÍCH HỢP TRỢ LÝ AI (PHIÊN BẢN QUÉT TỰ ĐỘNG) =================
 let currentAiData = null;
 
 function saveApiKey() {
@@ -495,7 +494,7 @@ async function generateAiMessage(tone) {
     document.getElementById('btn-tone-formal').classList.toggle('active', tone.includes('trang trọng'));
 
     const prompt = `Bạn là một giáo viên dạy thêm tận tâm. Hãy soạn một tin nhắn Zalo ngắn gọn gửi phụ huynh để nhắc việc đóng học phí.
-    Thông tin:
+    Thôngত্তি:
     - Tên học sinh: ${currentAiData.stuName}
     - Thuộc lớp: ${currentAiData.className}
     - Đã hoàn thành đợt học gồm: ${currentAiData.sessions} buổi
@@ -506,8 +505,32 @@ async function generateAiMessage(tone) {
     - Không viết tiêu đề, chỉ viết nội dung tin nhắn. Không bọc trong dấu ngoặc kép. Đừng viết quá dài dòng.`;
 
     try {
-        // ĐÃ SỬA THÀNH GEMINI-PRO
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+        // BƯỚC 1: Tự động quét và tìm phiên bản AI khả dụng cho API Key này
+        let targetModel = "gemini-1.5-flash"; // Fallback mặc định
+        const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        
+        if (listResp.ok) {
+            const listData = await listResp.json();
+            if (listData.models) {
+                // Lọc ra các model có hỗ trợ chức năng tạo văn bản (generateContent)
+                const validModels = listData.models.filter(m =>
+                    m.supportedGenerationMethods &&
+                    m.supportedGenerationMethods.includes("generateContent") &&
+                    m.name.includes("gemini")
+                );
+                
+                if (validModels.length > 0) {
+                    // Ưu tiên lấy bản flash hoặc pro mới nhất, nếu không thì lấy bản khả dụng đầu tiên
+                    const preferred = validModels.find(m => m.name.includes("1.5-flash")) 
+                                   || validModels.find(m => m.name.includes("1.5-pro")) 
+                                   || validModels[0];
+                    targetModel = preferred.name.replace('models/', '');
+                }
+            }
+        }
+
+        // BƯỚC 2: Gọi chính xác phiên bản AI đã quét được
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -826,4 +849,4 @@ window.saveApiKey = saveApiKey;
 window.openAiModal = openAiModal;
 window.generateAiMessage = generateAiMessage;
 window.sendAiMessageZalo = sendAiMessageZalo;
-window.logoutUser = logoutUser; // THÊM HÀM ĐĂNG XUẤT VÀO ĐÂY
+window.logoutUser = logoutUser;
